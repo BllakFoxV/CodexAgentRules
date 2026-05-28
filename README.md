@@ -1,181 +1,179 @@
 # CodexAgentRules - Linux Edition
 
-Complete rule framework and tooling for Codex AI agents on Linux. Includes behavioral guidelines, coding standards, and automated project understanding.
+Rule framework and local project-graph tooling for Codex agents on Linux. This repo captures the workflow anh designed: concise Vietnamese collaboration, graph-first project understanding, disciplined branching/commits, and senior-agent delegation/review.
 
 ## Project Contents
 
-### `rules/` — Agent Guidelines
-Rules for how Codex agents should work, communicate, and maintain code quality.
+### `rules/` - Agent Guidelines
 
-- **[01-core-agent-rules.md](rules/01-core-agent-rules.md)** — Identity, communication style, workflow (read before starting work)
-- **[02-coding-rules.md](rules/02-coding-rules.md)** — Code style, Python conventions, performance guidelines (read when editing)
-- **[03-project-graph-rules.md](rules/03-project-graph-rules.md)** — SQLite schema, node/edge types, graph update triggers (read after code changes)
-- **[INDEX.md](rules/INDEX.md)** — Quick reference to find the right rule
+- **[01-core-agent-rules.md](rules/01-core-agent-rules.md)** - Identity, communication, workflow, final response format.
+- **[02-coding-rules.md](rules/02-coding-rules.md)** - Code style, Python conventions, performance and IO rules.
+- **[03-project-graph-rules.md](rules/03-project-graph-rules.md)** - SQLite graph schema, node/edge types, update requirements.
+- **[INDEX.md](rules/INDEX.md)** - Quick reference for which rule file to read.
 
-### `scripts/` — Project Graph Tools
-Python tools for generating and querying a searchable project understanding database.
+### `example_project_rule/`
 
-- **update_project_graph.py** — Scan codebase and generate SQLite graph
-  - Extracts files, classes, functions, imports
-  - Detects test coverage relationships
-  - Handles Python syntax errors gracefully
-  
-- **query_project_graph.py** — Full-text search and relationship queries
-  - Search by name or content (FTS5)
-  - Show edges for any node
-  - Configurable result limit
+- **[AGENTS.md](example_project_rule/AGENTS.md)** - Project-level rules to copy into app repos.
 
-## Quick Start
+### `scripts/`
 
-### Prerequisites
-- Python 3.10+
-- Linux (Ubuntu 20.04+, Fedora 33+, Debian 11+, or similar)
-- No external package dependencies
+- **setup_project_rules.py** - Install `AGENTS.md`, graph scripts, graph schema, and `.gitignore` entries into a target project.
+- **update_project_graph.py** - Scan a target project and generate/update `project_graph.sqlite`.
+- **query_project_graph.py** - Search graph nodes and inspect edges.
 
-### Generate Project Graph
+### `docs/`
+
+- **graph-schema.md** - Human-readable graph schema reference copied into projects as local agent documentation.
+
+## Core Workflow Rules
+
+Use these rules in every target project after setup:
+
+- Read the relevant rules before coding.
+- Make a short plan before code/file changes.
+- Query the project graph before building a feature; do not rely on memory when graph data exists.
+- Create a feature branch before feature work.
+- Commit after every completed feature, bugfix, refactor, behavior change, function/class change, or test update.
+- Run relevant tests/checks before reporting completion.
+- Update the project graph after every completed code/test/behavior change.
+- After tests pass on a feature branch, wait for anh's approval before merging.
+- Keep graph tooling local-only in target projects; do not add graph scripts or graph database artifacts to app repos unless anh explicitly wants that.
+
+## Main Agent / Delegation Model
+
+The main agent acts like anh's senior technical lead:
+
+- Break larger work into smaller tasks.
+- Use the graph as project context before assigning or coding work.
+- Delegate suitable side tasks to sub-agents when available.
+- Keep ownership of final quality: review delegated work, integrate changes, run tests, update graph, and commit.
+- Do not use sub-agents as a substitute for review. The main agent remains responsible.
+
+## Constants Rule
+
+- Prefer constants over repeated hardcoded values when a value is used in more than one place.
+- If a constant is shared by both `core` and `ui`, place it under `shared`.
+
+## Setup Into A Project
+
+From this repo:
 
 ```bash
-# Generate SQLite graph for current project
-python scripts/update_project_graph.py
-
-# Specify custom graph location
-python scripts/update_project_graph.py --graph /path/to/project_graph.sqlite
+python3 scripts/setup_project_rules.py /path/to/project \
+  --project-id project:your_project \
+  --local-roots core,ui,shared,models,tests,main
 ```
 
-### Query Project Graph
+For WaydroidMgr-style projects:
 
 ```bash
-# Search nodes by name
-python scripts/query_project_graph.py "module:ui"
-
-# Show all edges for a node
-python scripts/query_project_graph.py "file:core/services/base.py" --edges
-
-# Limit results
-python scripts/query_project_graph.py "function:*service*" --limit 50
+python3 scripts/setup_project_rules.py /home/foxnq/Projects/WaydroidMgr \
+  --project-id project:waydroidmgr \
+  --local-roots core,models,shared,ui,tests,main
 ```
 
-## Integration with Codex Linux
+The setup script installs or updates:
 
-### Installation
+- `AGENTS.md`
+- `docs/graph-schema.md`
+- `scripts/update_project_graph.py`
+- `scripts/query_project_graph.py`
+- `.gitignore` entries for local graph artifacts
 
-1. **Clone into Codex workspace**
-   ```bash
-   git clone https://github.com/yourusername/CodexAgentRules.git \
-     /opt/codex/data/project-analysis
-   ```
+By default, existing files are preserved. Use `--force` to overwrite existing agent/graph files:
 
-2. **Reference in agent initialization**
-   ```python
-   # In Codex startup
-   load_rules_from("/opt/codex/data/project-analysis/rules")
-   load_project_graph("/opt/codex/data/project-analysis/project_graph.sqlite")
-   ```
+```bash
+python3 scripts/setup_project_rules.py /path/to/project --force
+```
 
-3. **Configure for your projects**
-   - Update `PROJECT_ID` in `update_project_graph.py` for each codebase
-   - Adjust `LOCAL_ROOTS` to match your module structure
-   - Set `PROJECT_ROOT` relative to your workspace
+## Generated Files In Target Projects
 
-4. **Auto-update in CI/CD**
-   ```bash
-   # Add to build pipeline
-   python /opt/codex/data/project-analysis/scripts/update_project_graph.py
-   ```
+Target projects should normally ignore these local agent artifacts:
+
+```text
+project_graph.sqlite
+project_graph.sqlite-*
+docs/graph-schema.md
+scripts/update_project_graph.py
+scripts/query_project_graph.py
+```
+
+`AGENTS.md` should usually be committed because it documents the project workflow for future agent sessions.
+
+## Generate And Query Project Graph
+
+Inside a target project after setup:
+
+```bash
+python3 scripts/update_project_graph.py
+python3 scripts/query_project_graph.py "feature OR MainWindow" --limit 20
+python3 scripts/query_project_graph.py "feature:event_bus" --edges
+```
+
+Use graph queries before feature work to understand existing files, functions, tests, dependencies, and previous decisions. Use graph updates after changes to keep that memory current.
 
 ## Graph Database Schema
 
 ### Nodes Table
+
 | Column | Type | Purpose |
-|--------|------|---------|
-| `id` | TEXT (PK) | Unique identifier: `file:path`, `class:module.Name`, `function:module.name` |
-| `type` | TEXT | Entity type: file, class, function, module, dependency, feature, decision, todo |
-| `name` | TEXT | Human-readable name |
-| `path` | TEXT | File path relative to project root |
-| `summary` | TEXT | Docstring or description |
-| `updated_at` | TEXT | UTC timestamp of last update |
-| `meta` | JSON | Additional metadata: module name, line number, async flag, error info |
+| --- | --- | --- |
+| `id` | TEXT (PK) | Stable id: `file:path`, `class:module.Name`, `function:module.name`. |
+| `type` | TEXT | Entity type: `project`, `module`, `file`, `class`, `function`, `feature`, `test`, etc. |
+| `name` | TEXT | Human-readable name. |
+| `path` | TEXT | File path relative to project root. |
+| `summary` | TEXT | Docstring or short description. |
+| `updated_at` | TEXT | UTC update timestamp. |
+| `meta` | JSON | Extra metadata such as module, line number, async flag, syntax error info. |
 
 ### Edges Table
-| Column | Type | Purpose |
-|--------|------|---------|
-| `src` | TEXT | Source node ID |
-| `rel` | TEXT | Relationship type |
-| `dst` | TEXT | Destination node ID |
-| `meta` | JSON | Relationship metadata |
 
-### Relationship Types
-- `contains` — Parent contains child (project→module, file→class, class→method)
-- `depends_on` — Dependency (file→external package)
-- `tested_by` — Test coverage (function→test file)
-- `touches` — Feature affects file
-- `related_to` — Semantic link (decision→feature)
+| Column | Type | Purpose |
+| --- | --- | --- |
+| `src` | TEXT | Source node id. |
+| `rel` | TEXT | Relationship type. |
+| `dst` | TEXT | Destination node id. |
+| `meta` | JSON | Optional relationship metadata. |
 
 ### Node Types
+
+```text
+project module file function class feature bugfix refactor test decision todo dependency
 ```
-project     — Root project node
-module      — Package or module
-file        — Source or config file
-class       — Python class definition
-function    — Python function or method
-dependency  — External package
-feature     — High-level capability
-decision    — Architectural choice
-todo        — Outstanding task or issue
-test        — Test file or case
+
+### Relationship Types
+
+```text
+contains touches adds modifies implements depends_on calls tested_by fixes refactors documents supersedes related_to
 ```
 
 ## File Structure
 
-```
+```text
 CodexAgentRules/
+├── docs/
+│   └── graph-schema.md
+├── example_project_rule/
+│   └── AGENTS.md
 ├── rules/
-│   ├── 01-core-agent-rules.md       Agent behavior & communication
-│   ├── 02-coding-rules.md           Code style & conventions
-│   ├── 03-project-graph-rules.md    Graph schema & requirements
-│   └── INDEX.md                     Rule quick reference
-│
+│   ├── 01-core-agent-rules.md
+│   ├── 02-coding-rules.md
+│   ├── 03-project-graph-rules.md
+│   └── INDEX.md
 ├── scripts/
-│   ├── update_project_graph.py      Generate/update SQLite graph
-│   └── query_project_graph.py       Search and query graph
-│
-├── project_graph.sqlite             Generated database (git-ignored)
-├── requirements.txt                 Python dependencies (none)
-└── README.md                        This file
+│   ├── query_project_graph.py
+│   ├── setup_project_rules.py
+│   └── update_project_graph.py
+├── requirements.txt
+└── README.md
 ```
-
-## Linux-Specific Features
-
-- ✅ **POSIX paths** — All paths use `/` separators
-- ✅ **Systemd integration** — Use systemd timers for periodic updates
-- ✅ **Container-ready** — Works in Docker, Podman, Kubernetes
-- ✅ **Standard tooling** — Compatible with vim, emacs, VS Code, git
-- ✅ **Tested environments** — Ubuntu 20.04+, Fedora 33+, Debian 11+, AlmaLinux 8+
-
-## Usage Patterns
-
-### For Agent Initialization
-1. Load rules: `load_rules_from("rules/")`
-2. Query graph: `search_nodes("function:*handler*", limit=10)`
-3. Gather context: `related_edges("file:core/main.py")`
-
-### For Code Changes
-1. Edit code
-2. Run `update_project_graph.py` to sync database
-3. Query graph to verify relationships
-
-### For Architecture Review
-- Query by feature: `related_edges("feature:event_bus")`
-- Find dependencies: `search_nodes("depends_on:*async*")`
-- Check test coverage: `related_edges("function:module.MyClass.method", "--edges")`
 
 ## Development
 
-**Update rules** → Edit markdown files in `rules/`
-
-**Update tools** → Edit Python scripts in `scripts/` (Python 3.10+, no external deps)
-
-**Regenerate graph** → Run `python scripts/update_project_graph.py`
+- Update rules in `rules/`.
+- Update project-level defaults in `example_project_rule/AGENTS.md`.
+- Update installer behavior in `scripts/setup_project_rules.py`.
+- Regenerate a target project's graph with `python3 scripts/update_project_graph.py` inside that target project.
 
 ## License
 

@@ -40,7 +40,7 @@ def related_edges(connection: sqlite3.Connection, node_id: str, limit: int) -> l
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Query the WaydroidMgr project graph.")
+    parser = argparse.ArgumentParser(description="Query the project graph.")
     parser.add_argument("query", help="FTS query or exact node id.")
     parser.add_argument("--graph", type=Path, default=GRAPH_PATH, help="Path to project_graph.sqlite.")
     parser.add_argument("--limit", type=int, default=20, help="Maximum rows to print.")
