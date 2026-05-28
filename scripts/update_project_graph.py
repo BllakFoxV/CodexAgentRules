@@ -14,8 +14,8 @@ from typing import Any, Iterable
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 GRAPH_PATH = PROJECT_ROOT / "project_graph.sqlite"
-PROJECT_ID = "project:waydroidmgr"
-LOCAL_ROOTS = {"core", "models", "shared", "ui", "tests", "main"}
+PROJECT_ID = "project:codex_agent_rules"
+LOCAL_ROOTS = {"scripts"}
 SKIP_DIRS = {".git", ".venv", "__pycache__"}
 
 
@@ -277,44 +277,29 @@ def class_owner(tree: ast.AST, function: ast.AST) -> str | None:
 
 
 def static_project_nodes() -> tuple[list[Node], list[Edge]]:
+    project_name = PROJECT_ID.removeprefix("project:").replace("_", " ").title()
     nodes = [
-        Node(PROJECT_ID, "project", "WaydroidMgr", summary="PyQt6 desktop app shell for controlling Waydroid."),
-        Node("module:ui", "module", "ui", path="ui", summary="PyQt6 widgets, styling, log panel, and main window."),
-        Node("module:core.modules", "module", "core.modules", path="core/modules", summary="Module scaffold and status module orchestration."),
-        Node("module:core.services", "module", "core.services", path="core/services", summary="Command execution, logging, and Waydroid service wrappers."),
-        Node("module:shared.event_bus", "module", "shared.event_bus", path="shared/event_bus", summary="Asynchronous application event bus."),
-        Node("module:models", "module", "models", path="models", summary="Small dataclass schemas shared by UI and services."),
-        Node("feature:app_bootstrap", "feature", "App bootstrap", path="main.py", summary="Creates QApplication, requires root permission, starts MainWindow, and binds shutdown."),
-        Node("feature:event_bus", "feature", "Event bus", path="shared/event_bus/bus.py", summary="ThreadPool-backed event delivery with tokens, wildcard routing, weak refs, and shutdown."),
-        Node("feature:main_window", "feature", "Main window", path="ui/main_window.py", summary="Renders UiGroup schemas, routes action clicks, notifications, readonly updates, and log panel."),
-        Node("feature:log_panel", "feature", "Log panel", path="ui/log_panel.py", summary="Displays bounded logs with level filtering and Qt event queue bridging."),
-        Node("feature:status_module", "feature", "Status module", path="core/modules/status_module.py", summary="Displays container status and restarts waydroid-container service."),
-        Node("feature:waydroid_services", "feature", "Waydroid services", path="core/services/waydroid", summary="Wraps Waydroid commands, config writes, properties, and UI settings."),
-        Node("decision:use_event_bus_between_layers", "decision", "Use event bus between layers", summary="UI emits and consumes events instead of calling Waydroid services directly."),
-        Node("decision:sqlite_project_graph", "decision", "Use SQLite project graph", path="project_graph.sqlite", summary="Store project understanding as queryable nodes and edges."),
-        Node("todo:fix_waydroid_shell_args", "todo", "Fix waydroid shell args", path="core/services/waydroid/base_waydroid_service.py", summary="shell=True inserts 'waydroid shell' as one subprocess argument instead of separate argv parts."),
+        Node(PROJECT_ID, "project", project_name, summary="Project graph root node."),
+        Node(
+            "feature:project_graph_tooling",
+            "feature",
+            "Project graph tooling",
+            path="scripts",
+            summary="Local SQLite project graph updater and query tools for Codex agents.",
+        ),
+        Node(
+            "decision:use_sqlite_project_graph",
+            "decision",
+            "Use SQLite project graph",
+            path="docs/graph-schema.md",
+            summary="Store project understanding as queryable nodes and edges in SQLite.",
+        ),
     ]
     edges = [
-        Edge(PROJECT_ID, "contains", "module:ui"),
-        Edge(PROJECT_ID, "contains", "module:core.modules"),
-        Edge(PROJECT_ID, "contains", "module:core.services"),
-        Edge(PROJECT_ID, "contains", "module:shared.event_bus"),
-        Edge(PROJECT_ID, "contains", "module:models"),
-        Edge("feature:app_bootstrap", "touches", "file:main.py"),
-        Edge("feature:event_bus", "touches", "file:shared/event_bus/bus.py"),
-        Edge("feature:main_window", "touches", "file:ui/main_window.py"),
-        Edge("feature:log_panel", "touches", "file:ui/log_panel.py"),
-        Edge("feature:status_module", "touches", "file:core/modules/status_module.py"),
-        Edge("feature:waydroid_services", "touches", "file:core/services/waydroid/base_waydroid_service.py"),
-        Edge("feature:waydroid_services", "touches", "file:core/services/waydroid/system_waydroid_service.py"),
-        Edge("feature:waydroid_services", "touches", "file:core/services/waydroid/ui_waydroid_service.py"),
-        Edge("feature:main_window", "depends_on", "feature:event_bus"),
-        Edge("feature:status_module", "depends_on", "feature:event_bus"),
-        Edge("feature:status_module", "depends_on", "feature:waydroid_services"),
-        Edge("decision:use_event_bus_between_layers", "related_to", "feature:event_bus"),
-        Edge("decision:use_event_bus_between_layers", "related_to", "feature:main_window"),
-        Edge("decision:sqlite_project_graph", "documents", "file:docs/graph-schema.md"),
-        Edge("todo:fix_waydroid_shell_args", "touches", "file:core/services/waydroid/base_waydroid_service.py"),
+        Edge("feature:project_graph_tooling", "touches", "file:scripts/update_project_graph.py"),
+        Edge("feature:project_graph_tooling", "touches", "file:scripts/query_project_graph.py"),
+        Edge("decision:use_sqlite_project_graph", "documents", "file:docs/graph-schema.md"),
+        Edge("decision:use_sqlite_project_graph", "related_to", "feature:project_graph_tooling"),
     ]
     return nodes, edges
 
@@ -360,7 +345,7 @@ def update_graph(graph_path: Path) -> tuple[int, int]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Update the WaydroidMgr SQLite project graph.")
+    parser = argparse.ArgumentParser(description="Update the SQLite project graph.")
     parser.add_argument("--graph", type=Path, default=GRAPH_PATH, help="Path to project_graph.sqlite.")
     args = parser.parse_args()
 

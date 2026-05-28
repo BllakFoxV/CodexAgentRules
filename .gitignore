@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Local project graph database
+project_graph.sqlite
+project_graph.sqlite-*
+
+# Editor/local state
+.vscode/
+.idea/
+.env
+.venv/
